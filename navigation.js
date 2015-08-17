@@ -59,6 +59,67 @@
     navi.isStarted = false;
 
     navi.helpers = {
+        getOffset: function (el, position) {
+            var
+                w = $(el).width(),
+                h = $(el).height(),
+                o = $(el).offset();
+
+            switch(position){
+                case "top":
+                    return o[position];
+                case "bottom":
+                    return o["top"] + h;
+                case "left":
+                    return o[position]
+                case "right":
+                    return o["left"] + w
+                default:
+                    return 0;
+            }
+        },
+        dashboard: {
+            isDashboardTab: function (element) {
+                if(element.prop("tagName").toLowerCase() == "a"){
+                    return (element.parent().parent().attr("id") == "tabsList");
+                }
+
+                return false;
+            },
+            shouldScroll: function (tab){
+                var
+                    list = tab.parent().parent(),
+                    listItem = tab.parent(),
+                    offset = navi.helpers.getOffset,
+                    hasButtons = (function () {
+                        return $("#dashboard-go-left").is(":visible")
+                    }()),
+                    leftButton = $("#dashboard-go-left").parent(),
+                    rightButton = $("#dashboard-go-right").parent(),
+                    minOffset = listItem.width() - 10;
+
+                if(hasButtons)
+                    return {
+                        left: offset(listItem, "left") - offset(leftButton, "right") < minOffset,
+                        right: offset(rightButton, "left") - offset(listItem, "right") < minOffset
+                    };
+                else
+                    return {
+                        left: false,
+                        right: false
+                    };
+            },
+            scrollTab: function (tab){
+                if(this.isDashboardTab(tab)){
+                    var scrollable = this.shouldScroll(tab);
+                    if(scrollable.left == true){
+                        $("#dashboard-go-left").click();
+                    } else if(scrollable.right == true){
+                        $("#dashboard-go-right").click();
+                    }
+                }
+            }
+        },
         findMarkedIndex: function (selectors) {
             var
                 sectionItems = $(selectors.main).find(selectors.item + ":visible"),
@@ -128,8 +189,9 @@
                 setTimeout(function (){
                     navi.helpers.scrollWindow(elementToMark, direction)
                 }, 400);
-            }
 
+                this.dashboard.scrollTab(elementToMark);
+            }
         },
         select: function (selectors, event) {
             /*
@@ -192,7 +254,15 @@
                 case Elements.LIST_ITEM:
                 case Elements.DIVISION:
                 case Elements.SPAN:
-                    if (marked.hasClass("ng-binding")) {
+                    if (marked.hasClass("chartTitle")) {
+                        marked.find("[ng-hide='showExportButton()']").click();
+                        window.setTimeout(function (){
+                            marked.find("[ng-hide='showExportButton()']")
+                                .next("ul")
+                                .css({marginLeft: - 60});
+                        }, 200);
+
+                    } else if (marked.hasClass("ng-binding")) {
                         marked.click();
                     } else if (marked.find("[ng-click]").size() > 0) {
                         marked.deepestChild("ng-click").click();
@@ -209,6 +279,8 @@
 
                             captureKeyPress = true;
                         }
+                    }else {
+                        marked.click();
                     }
                     break;
                 case Elements.ANCHOR:
@@ -236,8 +308,10 @@
                             linkParts.push(href);
 
                             window.location.href = linkParts.join("");
-                        } else
-                            window.location.href = href;
+                        } else {
+                            var newTab = window.open( '', '_blank' );
+                            newTab.location = href;
+                        }
                     } else {
                         marked.click();
                     }
@@ -500,10 +574,10 @@
             processKeyCombination: function (keyCombo) {
                 /*
                  * keyCombo = {
-                 *     keyCode: xx,
-                 *     isSelectedShift: boolean,
-                 *     isSelectedAlt: boolean,
-                 *     event: object
+                 *  keyCode: xx,
+                 *  isSelectedShift: boolean,
+                 *  isSelectedAlt: boolean,
+                 *  event: object
                  * }
                  */
                 if ($(this.TOP.selectors.main).size() == 0 &&
@@ -727,9 +801,9 @@
             PublishSubscribe.publish("navigationShowInfo");
         }
     });
-   $(document).ready(function () {
-       if(Navi.helpers.supportHtml5Storage() &&
-          localStorage.getItem(Navi.ConstantActivation) == "true")
-            $(window).load(function () { setTimeout(Navi.start, 1000) });
-   });
+    $(document).ready(function () {
+        if(Navi.helpers.supportHtml5Storage() &&
+            localStorage.getItem(Navi.ConstantActivation) == "true")
+                $(window).load(function () { setTimeout(Navi.start, 1000) });
+    });
 }());
